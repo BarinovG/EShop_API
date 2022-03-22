@@ -15,5 +15,11 @@
 ## Установим зависимости
 -- pip install -r requirements.txt
 
-## Запуск сервера
+## Редактирование настроек
+Добавить в виртуальное окружение переменные:
+SECRET_KEY, DEBUG, db_name, db_user, db_pass, host_mail, host_pass
+
+## Запустить сервер
+python manage.py makemigrations
+python manage.py migrate
 python manage.py runserver
