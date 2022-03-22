@@ -21,5 +21,7 @@ SECRET_KEY, DEBUG, db_name, db_user, db_pass, host_mail, host_pass
 
 ## Запустить сервер
 python manage.py makemigrations
+
 python manage.py migrate
+
 python manage.py runserver
