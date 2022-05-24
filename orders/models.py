@@ -6,13 +6,18 @@ from django.contrib.auth.validators import UnicodeUsernameValidator
 from django_rest_passwordreset.tokens import get_token_generator
 
 
+class TypeAvailability(models.TextChoices):
+    STOCK = 'IN STOCK', 'В наличии'
+    TRANSIT = 'TRANSIT', 'В транзите'
+    EOS = 'End of sales', 'Больше не продается'
+
 class TypeContacts(models.TextChoices):
     SHOP = 'SHOP', 'Магазин'
     BUYER = 'CLIENT', 'Покупатель'
 
 
 class StatusOrders(models.TextChoices):
-    # BASKET = 'BASKET', 'Корзина'
+    BASKET = 'BASKET', 'Корзина'
     NEW = 'NEW', 'Новый заказ'
     CONFIRMED = 'CONFIRMED', 'Подтвержденный заказ'
     ASSEMBLED = 'ASSEMBLED', 'Заказ собран'
@@ -77,8 +82,7 @@ class User(AbstractUser):
     )
     type = models.TextField(
         'Тип пользователя',
-        choices=TypeContacts.choices,
-        default=TypeContacts.BUYER,
+        choices=TypeContacts.choices
     )
 
     class Meta:
@@ -164,6 +168,11 @@ class ProductInfo(models.Model):
     quantity = models.PositiveIntegerField('Количество')
     price = models.PositiveIntegerField('Цена')
     price_rrc = models.PositiveIntegerField('Рекомендуемая розничная цена')
+    availability = models.TextField(
+        'Доступность товара',
+        choices=TypeAvailability.choices,
+        default=TypeAvailability.STOCK
+    )
 
     class Meta:
         verbose_name = 'Информация о продукте'
@@ -173,7 +182,7 @@ class ProductInfo(models.Model):
         ]
 
     def __str__(self):
-        return self.name
+        return f'{self.name} in {self.shop} qnt-{self.quantity} price-{self.price} {self.availability}'
 
 
 class Parameter(models.Model):
@@ -213,6 +222,10 @@ class ProductParameter(models.Model):
         ]
 
 
+    def __str__(self):
+        return f'{self.product_info.name} {self.parameter}'
+
+
 class Contact(models.Model):
     user = models.ForeignKey(
         User,
@@ -234,7 +247,7 @@ class Contact(models.Model):
         verbose_name_plural = 'Список контактов пользователя'
 
     def __str__(self):
-        return f'{self.city} {self.street} {self.house} {self.apartment}'
+        return f'{self.user.company} {self.user.last_name} {self.city} {self.street}'
 
 
 class Order(models.Model):
@@ -258,6 +271,14 @@ class Order(models.Model):
         null=True,
         on_delete=models.CASCADE,
     )
+
+    class Meta:
+        verbose_name = 'Заказ'
+        verbose_name_plural = 'Cписок заказов'
+
+
+    def __str__(self):
+        return f'{self.user.company} {self.user.last_name} {self.user.first_name} {self.state}'
 
 
 class OrderItem(models.Model):
@@ -284,11 +305,14 @@ class OrderItem(models.Model):
             UniqueConstraint(fields=['order_id', 'product_info'], name='unique_order_item')
         ]
 
+    def __str__(self):
+        return f'{self.product_info.name} by {self.order}'
+
 
 class ConfirmEmailToken(models.Model):
     user = models.ForeignKey(
         User,
-        verbose_name='Пользователь, связанный с этим токеном сброса пароля',
+        verbose_name='Подтверждение токена',
         related_name='confirm_email_tokens',
         on_delete=models.CASCADE,
     )

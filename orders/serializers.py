@@ -18,7 +18,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'first_name', 'last_name', 'email', 'company', 'position', 'contacts')
+        fields = ('id', 'first_name', 'last_name', 'email', 'company', 'position', 'contacts', 'type')
         read_only_fields = ('id',)
 
 
@@ -58,7 +58,7 @@ class ProductInfoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductInfo
-        fields = ('id', 'model', 'product', 'shop', 'quantity', 'price', 'price_rrc', 'product_parameters',)
+        fields = ('id', 'name', 'product', 'shop', 'quantity', 'price', 'price_rrc', 'product_parameters',)
         read_only_fields = ('id',)
 
 
@@ -84,5 +84,5 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ('id', 'ordered_items', 'state', 'dt', 'total_sum', 'contact',)
+        fields = ('id', 'ordered_items', 'state', 'total_sum', 'contact',)
         read_only_fields = ('id',)
