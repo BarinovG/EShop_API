@@ -1,91 +1,128 @@
-# получение объявлений
-GET http://127.0.0.1:8000/api/v1/basket
-Content-Type: application/json
-Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
-
-###
-
-POST http://127.0.0.1:8000/api/v1/basket
-Content-Type: application/json
-Authorization: Token d1bb6c9f3599973bc9df794028a8a9613f7dddd3
-
-
-###
-
-GET http://127.0.0.1:8000/api/v1/partner/state
-Content-Type: application/json
-Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
-
-
-###
-POST http://127.0.0.1:8000/api/v1/partner/state
-Content-Type: application/json
-Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
-
-{
-  "state": "closed"
-}
-
-###
-GET http://127.0.0.1:8000/api/v1/partner/orders
-Content-Type: application/json
-Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
-
-###
-GET http://127.0.0.1:8000/api/v1/user/contact
-Content-Type: application/json
-Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
-
-###
-POST http://127.0.0.1:8000/api/v1/user/contact
-Content-Type: application/json
-Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
-
-###
+### Registration
 POST http://127.0.0.1:8000/api/v1/user/register
 Content-Type: application/json
-Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
 
 {
-  "first_name": "S",
-  "last_name": "RonSSaldo",
-  "email": "123322@gmail.com",
-  "password": "123@gmail.com",
-  "company": "SDADD",
-  "position": "DDD",
-  "type": "SHOP"
+  "first_name": "Foo",
+  "last_name": "Bar",
+  "email": "email",
+  "password": "ValidPassword",
+  "company": "MU",
+  "position": "Fw",
+  "type": "CLIENT"
 }
 
-###
-POST http://127.0.0.1:8000/api/v1/user/login
-Content-Type: application/json
-#Authorization: Token 272ef3d0bcbda8b8a5f1ce2cb1bfcf983ae4071e
-
-{
-  "email": "cr7@gmail.com",
-  "password": "cr7@gmail.com"
-}
-
-###
-POST http://127.0.0.1:8000/api/v1/user/details
-Content-Type: application/json
-Authorization: Token 272ef3d0bcbda8b8a5f1ce2cb1bfcf983ae4071e
-
-{
-  "type": "SHOP"
-}
-
-###
-GET http://127.0.0.1:8000/api/v1/user/details
-Content-Type: application/json
-Authorization: Token 272ef3d0bcbda8b8a5f1ce2cb1bfcf983ae4071e
-
-###
+### Confrim Registration
 POST http://127.0.0.1:8000/api/v1/user/register/confirm
 Content-Type: application/json
-#Authorization: Token 272ef3d0bcbda8b8a5f1ce2cb1bfcf983ae4071e
 
 {
-  "email": "gosha.jerry@gmail.com",
-  "token": "272ef3d0bcbda8b8a5f1ce2cb1bfcf983ae4071e"
+  "email": "email",
+  "token": "TokenFromMail"
 }
+
+### Login to account
+POST http://127.0.0.1:8000/api/v1/user/login
+Content-Type: application/json
+
+{
+  "email": "email",
+  "password": "test1test"
+}
+
+### Get info about account
+GET http://127.0.0.1:8000/api/v1/user/details
+Content-Type: application/json
+Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
+
+### Change user info
+POST http://127.0.0.1:8000/api/v1/user/details
+Content-Type: application/json
+Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
+
+{
+  "first_name": "Gosha",
+  "last_name": "Barinov"
+}
+
+### Change user password
+POST http://127.0.0.1:8000/api/v1/user/details
+Content-Type: application/json
+Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
+
+{
+  "password": "test1test"
+}
+
+### Get my contacts
+GET http://127.0.0.1:8000/api/v1/user/contact
+Content-Type: application/json
+Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
+
+### Add my contacts
+POST http://127.0.0.1:8000/api/v1/user/contact
+Content-Type: application/json
+Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
+
+{
+  "city": "123",
+  "phone": "123"
+}
+
+### Edit my contact
+PUT http://127.0.0.1:8000/api/v1/user/contact/10/
+Content-Type: application/json
+Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
+
+{
+  "city": "456",
+  "house": "2",
+  "building": "3",
+  "phone": "asd007"
+}
+
+### Delete my contact
+DELETE http://127.0.0.1:8000/api/v1/user/contact/11/
+Content-Type: application/json
+Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
+
+### Reset password (get a rest-token)
+POST http://127.0.0.1:8000/api/v1/user/password_reset
+Content-Type: application/json
+
+{
+  "email": "email"
+}
+
+### Confirm new password
+POST http://127.0.0.1:8000/api/v1/user/password_reset/confirm
+Content-Type: application/json
+
+{
+  "password": "test2test",
+  "token": "TokenFromMail"
+}
+
+
+
+
+
+
+
+
+
+### Get all categories
+GET http://127.0.0.1:8000/api/v2/category
+Content-Type: application/json
+
+### New category
+POST http://127.0.0.1:8000/api/v2/category/
+Content-Type: application/json
+
+{
+  "name": "s"
+}
+
+### Delete category
+DELETE http://127.0.0.1:8000/api/v2/category/5/
+Content-Type: application/json

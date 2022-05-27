@@ -234,13 +234,13 @@ class Contact(models.Model):
         blank=True,
         on_delete=models.CASCADE,
     )
-    city = models.CharField('Город', max_length=100)
-    street = models.CharField('Улица', max_length=100)
+    city = models.CharField('Город', max_length=100, blank=True)
+    street = models.CharField('Улица', max_length=100, blank=True)
     house = models.CharField('Дом', max_length=100, blank=True)
     structure = models.CharField('Корпус', max_length=100, blank=True)
     building = models.CharField('Строение', max_length=100, blank=True)
     apartment = models.CharField('Квартира', max_length=100, blank=True)
-    phone = models.CharField('Телефон', max_length=100)
+    phone = models.CharField('Телефон', max_length=100, blank=True)
 
     class Meta:
         verbose_name = 'Контакты пользователя'
