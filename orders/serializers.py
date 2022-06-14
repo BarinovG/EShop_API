@@ -62,27 +62,50 @@ class ProductInfoSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
 
-class OrderItemSerializer(serializers.ModelSerializer):
+class ProductInfoOrderItemGet(ProductInfoSerializer):
+    class Meta:
+        model = ProductInfo
+        fields = ('name',)
+
+
+class OrderItemSerializerGet(serializers.ModelSerializer):
+    product_info = ProductInfoOrderItemGet()
+    total_sum_position = serializers.IntegerField()
+
     class Meta:
         model = OrderItem
-        fields = ('id', 'product_info', 'quantity', 'order',)
+        fields = ('id', 'order', 'product_info', 'quantity', 'total_sum_position')
+        read_only_fields = ('id', 'order')
+
+
+class OrderItemSerializerPost(serializers.ModelSerializer):
+
+    def create(self, validated_data):
+        return OrderItem.objects.create(**validated_data)
+
+    class Meta:
+        model = OrderItem
+        fields = ('id', 'quantity', 'order', 'product_info')
         read_only_fields = ('id',)
-        extra_kwargs = {
-            'order': {'write_only': True}
-        }
 
 
-class OrderItemCreateSerializer(OrderItemSerializer):
-    product_info = ProductInfoSerializer(read_only=True)
+class OrderItemSerializerPatch(OrderItemSerializerGet):
+    class Meta:
+        model = OrderItem
+        fields = ('id', 'quantity')
+        read_only_fields = ('id',)
+
+
+class UserOrderGetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'first_name', 'last_name')
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    ordered_items = OrderItemCreateSerializer(read_only=True, many=True)
-
     total_sum = serializers.IntegerField()
-    contact = ContactSerializer(read_only=True)
 
     class Meta:
         model = Order
-        fields = ('id', 'ordered_items', 'state', 'total_sum', 'contact',)
+        fields = ('id', 'user', 'total_sum')
         read_only_fields = ('id',)

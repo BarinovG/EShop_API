@@ -6,7 +6,7 @@ Content-Type: application/json
   "first_name": "Foo",
   "last_name": "Bar",
   "email": "email",
-  "password": "ValidPassword",
+  "password": "Valid1Password",
   "company": "MU",
   "position": "Fw",
   "type": "CLIENT"
@@ -41,8 +41,8 @@ Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
 {
-  "first_name": "Gosha",
-  "last_name": "Barinov"
+  "first_name": "Foo",
+  "email": "gosha.jerry@gmail.com"
 }
 
 ### Change user password
@@ -103,26 +103,89 @@ Content-Type: application/json
   "token": "TokenFromMail"
 }
 
+### Partner get state
+GET http://127.0.0.1:8000/api/v1/partner/state
+Content-Type: application/json
+Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
 
+### Partner change state
+POST http://127.0.0.1:8000/api/v1/partner/state
+Content-Type: application/json
+Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
 
+{
+  "state": "True"
+}
 
+### POST method for upload .yaml-file need to use by the Postman with "Body"-"form-data"
+POST http://127.0.0.1:8000/api/v1/partner/update
 
+### Partner get orders
+GET http://127.0.0.1:8000/api/v1/partner/orders
+Content-Type: application/json
+Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
-
-
-
-### Get all categories
-GET http://127.0.0.1:8000/api/v2/category
+### Get list of categories
+GET http://127.0.0.1:8000/api/v1/categories
 Content-Type: application/json
 
-### New category
-POST http://127.0.0.1:8000/api/v2/category/
+### Get list of shop's
+GET http://127.0.0.1:8000/api/v1/shops
+Content-Type: application/json
+
+### Find a product by name or category
+GET http://127.0.0.1:8000/api/v1/products
 Content-Type: application/json
 
 {
-  "name": "s"
+  "text": "app"
 }
 
-### Delete category
-DELETE http://127.0.0.1:8000/api/v2/category/5/
+### Get your shopping cart
+GET http://127.0.0.1:8000/api/v1/basket
 Content-Type: application/json
+Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
+
+### Add product to your shopping cart
+POST http://127.0.0.1:8000/api/v1/basket
+Content-Type: application/json
+Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
+
+{
+  "product_info_id": 37,
+  "quantity": 10
+}
+
+### Get info about item in shopping cart
+GET http://127.0.0.1:8000/api/v1/basket/1
+Content-Type: application/json
+Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
+
+### Change quantity of item
+PATCH http://127.0.0.1:8000/api/v1/basket/51
+Content-Type: application/json
+Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
+
+{
+  "quantity": "True"
+}
+
+### Delete item for shopping cart
+DELETE http://127.0.0.1:8000/api/v1/basket/61
+Content-Type: application/json
+Authorization: Token 127442b31c0023df3875960e889dcc36b6de
+
+### Get list of orders
+GET http://127.0.0.1:8000/api/v1/order
+Content-Type: application/json
+Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
+
+### Change status of order from BASKET to NEW
+POST http://127.0.0.1:8000/api/v1/order
+Content-Type: application/json
+Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
+
+{
+  "order_id": "8",
+  "contact_id": "10"
+}

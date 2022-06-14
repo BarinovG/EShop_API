@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import UniqueConstraint, options
+from django.db.models import UniqueConstraint
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.validators import UnicodeUsernameValidator
@@ -10,6 +10,7 @@ class TypeAvailability(models.TextChoices):
     STOCK = 'IN STOCK', 'В наличии'
     TRANSIT = 'TRANSIT', 'В транзите'
     EOS = 'End of sales', 'Больше не продается'
+
 
 class TypeContacts(models.TextChoices):
     SHOP = 'SHOP', 'Магазин'
@@ -73,7 +74,7 @@ class User(AbstractUser):
         help_text='Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.',
         validators=[username_validator],
         error_messages={'unique': 'A user with that username already exists.'},
-        )
+    )
     is_active = models.BooleanField(
         'Активация',
         default=False,
@@ -95,7 +96,7 @@ class User(AbstractUser):
 
 
 class Shop(models.Model):
-    name = models.CharField('Имя пользователя', max_length=200)
+    name = models.CharField('Название магазина', max_length=200)
     url = models.URLField('Cсылка', null=True, blank=True)
     user = models.OneToOneField(
         User,
@@ -105,7 +106,8 @@ class Shop(models.Model):
         on_delete=models.CASCADE,
     )
     state = models.BooleanField('Возможность заказа из магазина', default=True)
-    # upload = models.FileField(name=None, upload_to='uploads/', )
+
+    filename = models.FileField(name=None, upload_to='uploads/', blank=True)
 
     class Meta:
         verbose_name = 'Магазин'
@@ -142,13 +144,14 @@ class Product(models.Model):
     class Meta:
         verbose_name = 'Продукт'
         verbose_name_plural = 'Список продуктов'
-        ordering = ('-name', )
+        ordering = ('-name',)
 
     def __str__(self):
         return self.name
 
 
 class ProductInfo(models.Model):
+    model = models.CharField('Модель', max_length=80, blank=True)
     external_id = models.PositiveIntegerField(verbose_name='Внешний ИД')
     name = models.CharField('Название', max_length=50)
     shop = models.ForeignKey(
@@ -182,7 +185,7 @@ class ProductInfo(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.name} in {self.shop} qnt-{self.quantity} price-{self.price} {self.availability}'
+        return f'{self.product} in {self.shop} qnt-{self.quantity} price-{self.price} {self.availability}'
 
 
 class Parameter(models.Model):
@@ -220,7 +223,6 @@ class ProductParameter(models.Model):
         constraints = [
             UniqueConstraint(fields=['product_info', 'parameter'], name='unique_product_parameter')
         ]
-
 
     def __str__(self):
         return f'{self.product_info.name} {self.parameter}'
@@ -262,7 +264,7 @@ class Order(models.Model):
     state = models.TextField(
         'Cтатус',
         choices=StatusOrders.choices,
-        default=StatusOrders.NEW,
+        default=StatusOrders.BASKET,
     )
     contact = models.ForeignKey(
         Contact,
@@ -275,7 +277,6 @@ class Order(models.Model):
     class Meta:
         verbose_name = 'Заказ'
         verbose_name_plural = 'Cписок заказов'
-
 
     def __str__(self):
         return f'{self.user.company} {self.user.last_name} {self.user.first_name} {self.state}'
@@ -306,7 +307,7 @@ class OrderItem(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.product_info.name} by {self.order}'
+        return f'{self.product_info.product} by {self.order}'
 
 
 class ConfirmEmailToken(models.Model):
