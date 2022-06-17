@@ -1,5 +1,5 @@
 ### Registration
-POST http://127.0.0.1:8000/api/v1/user/register
+POST http://127.0.0.1:8000/api/v1/user/registration
 Content-Type: application/json
 
 {
@@ -13,7 +13,7 @@ Content-Type: application/json
 }
 
 ### Confrim Registration
-POST http://127.0.0.1:8000/api/v1/user/register/confirm
+POST http://127.0.0.1:8000/api/v1/user/register/confirm_registration
 Content-Type: application/json
 
 {
@@ -22,7 +22,7 @@ Content-Type: application/json
 }
 
 ### Login to account
-POST http://127.0.0.1:8000/api/v1/user/login
+POST http://127.0.0.1:8000/api/v1/user/login_account
 Content-Type: application/json
 
 {
@@ -31,12 +31,12 @@ Content-Type: application/json
 }
 
 ### Get info about account
-GET http://127.0.0.1:8000/api/v1/user/details
+GET http://127.0.0.1:8000/api/v1/user/user_info
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
 ### Change user info
-POST http://127.0.0.1:8000/api/v1/user/details
+POST http://127.0.0.1:8000/api/v1/user/change_user_info
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
@@ -46,7 +46,7 @@ Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 }
 
 ### Change user password
-POST http://127.0.0.1:8000/api/v1/user/details
+POST http://127.0.0.1:8000/api/v1/user/change_user_info
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
@@ -55,12 +55,12 @@ Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 }
 
 ### Get my contacts
-GET http://127.0.0.1:8000/api/v1/user/contact
+GET http://127.0.0.1:8000/api/v1/user/user_contacts
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
 ### Add my contacts
-POST http://127.0.0.1:8000/api/v1/user/contact
+POST http://127.0.0.1:8000/api/v1/user/add_user_contact
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
@@ -70,7 +70,7 @@ Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 }
 
 ### Edit my contact
-PUT http://127.0.0.1:8000/api/v1/user/contact/10/
+PUT http://127.0.0.1:8000/api/v1/user/change_user_contact/10/
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
@@ -82,7 +82,7 @@ Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 }
 
 ### Delete my contact
-DELETE http://127.0.0.1:8000/api/v1/user/contact/11/
+DELETE http://127.0.0.1:8000/api/v1/user/delete_user_contact/11/
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
@@ -104,12 +104,12 @@ Content-Type: application/json
 }
 
 ### Partner get state
-GET http://127.0.0.1:8000/api/v1/partner/state
+GET http://127.0.0.1:8000/api/v1/partner/shop_info
 Content-Type: application/json
 Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
 
 ### Partner change state
-POST http://127.0.0.1:8000/api/v1/partner/state
+POST http://127.0.0.1:8000/api/v1/partner/change_shop_status
 Content-Type: application/json
 Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
 
@@ -118,12 +118,12 @@ Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
 }
 
 ### POST method for upload .yaml-file need to use by the Postman with "Body"-"form-data"
-POST http://127.0.0.1:8000/api/v1/partner/update
+POST http://127.0.0.1:8000/api/v1/partner/add_price
 
 ### Partner get orders
-GET http://127.0.0.1:8000/api/v1/partner/orders
+GET http://127.0.0.1:8000/api/v1/partner/users_orders
 Content-Type: application/json
-Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
+Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
 
 ### Get list of categories
 GET http://127.0.0.1:8000/api/v1/categories
@@ -142,12 +142,12 @@ Content-Type: application/json
 }
 
 ### Get your shopping cart
-GET http://127.0.0.1:8000/api/v1/basket
+GET http://127.0.0.1:8000/api/v1/shopping_cart/basket
 Content-Type: application/json
 Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
 
 ### Add product to your shopping cart
-POST http://127.0.0.1:8000/api/v1/basket
+POST http://127.0.0.1:8000/api/v1/shopping_cart/add_position
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
@@ -157,12 +157,12 @@ Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 }
 
 ### Get info about item in shopping cart
-GET http://127.0.0.1:8000/api/v1/basket/1
+GET http://127.0.0.1:8000/api/v1/shopping_cart/product_info/1
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
 ### Change quantity of item
-PATCH http://127.0.0.1:8000/api/v1/basket/51
+PATCH http://127.0.0.1:8000/api/v1/shopping_cart/change_quantity/51
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
@@ -171,17 +171,17 @@ Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 }
 
 ### Delete item for shopping cart
-DELETE http://127.0.0.1:8000/api/v1/basket/61
+DELETE http://127.0.0.1:8000/api/v1/shopping_cart/delete_position/61
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de
 
 ### Get list of orders
-GET http://127.0.0.1:8000/api/v1/order
+GET http://127.0.0.1:8000/api/v1/order/get_orders
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
 ### Change status of order from BASKET to NEW
-POST http://127.0.0.1:8000/api/v1/order
+POST http://127.0.0.1:8000/api/v1/order/new_order
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
