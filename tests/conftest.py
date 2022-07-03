@@ -18,6 +18,11 @@ def test_email():
     return 'tes12t@test.com'
 
 
+@pytest.fixture
+def type_user_shop():
+    return 'SHOP'
+
+
 # Create test user
 @pytest.fixture
 def create_user(db, django_user_model, test_password, test_email):
@@ -32,10 +37,33 @@ def create_user(db, django_user_model, test_password, test_email):
     return make_user
 
 
+# Create test user with type SHOP
+@pytest.fixture
+def create_user_shop(db, django_user_model, test_password, test_email, type_user_shop):
+    def make_user_shop(**kwargs):
+        kwargs['password'] = test_password
+        kwargs['email'] = test_email
+        kwargs['is_active'] = True
+        kwargs['type'] = type_user_shop
+        if 'username' not in kwargs:
+            kwargs['username'] = str(uuid.uuid4())
+        return django_user_model.objects.create_user(**kwargs)
+
+    return make_user_shop
+
+
 # Create auth-token for test user
 @pytest.fixture
 def get_or_create_token(db, create_user):
     user = create_user()
+    token, _ = Token.objects.get_or_create(user=user)
+    return token
+
+
+# Create auth-token for test user-shop
+@pytest.fixture
+def get_or_create_token_shop(db, create_user_shop):
+    user = create_user_shop()
     token, _ = Token.objects.get_or_create(user=user)
     return token
 
@@ -84,6 +112,22 @@ def category_factory():
 @pytest.fixture
 def product_info_factory():
     def factory(**kwargs):
-        return baker.make("ProductInfo", **kwargs)
+        return baker.make("ProductInfo", make_m2m=True, **kwargs)
+
+    return factory
+
+# Create OrderItems
+@pytest.fixture
+def order_items_factory():
+    def factory(**kwargs):
+        return baker.make("OrderItem", make_m2m=True, **kwargs)
+
+    return factory
+
+# Create random Order
+@pytest.fixture
+def order_factory():
+    def factory(**kwargs):
+        return baker.make("Order", make_m2m=True, **kwargs)
 
     return factory

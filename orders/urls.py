@@ -8,7 +8,7 @@ from .views import CategoryView, ShopView, ProductInfoView, OrderViewSet, UserVi
 router = DefaultRouter()
 router.register('user', UserViewSet, basename='user')
 router.register('partner', PartnerFunctionsViewSet, basename='partner')
-router.register('shopping_cart', ShoppingCartViewSet, basename='basket')
+router.register('shopping_cart', ShoppingCartViewSet, basename='shopping_cart')
 router.register('order', OrderViewSet, basename='order')
 router.register('category', CategoryView, basename='category')
 router.register('shops', ShopView, basename='shops')

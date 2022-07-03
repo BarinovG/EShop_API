@@ -21,15 +21,14 @@ requests_log.propagate = True
 
 headers = {'Accept': '*/*',
            'Accept-Encoding': 'identity, deflate, compress, gzip',
-           'Authorization': 'Token 127442b31c0023df3875960e889dcc36b6de99e5',
+           'Authorization': 'Token d1bb6c9f3599973bc9df794028a8a9613f7dddd3',
            'User-Agent': 'python-requests/0.12.1'}
-url = 'http://127.0.0.1:8000/api/v1/basket'
+url = 'http://127.0.0.1:8000/api/v1/products'
 data = {
-    "product_info_id": 34,
-    "quantity": 10
+    "text": "pp"
 }
 
-resp_get = requests.post(url=url, data=data, headers=headers).json()
+resp_get = requests.get(url=url, headers=headers, data=data).json()
 
 
 

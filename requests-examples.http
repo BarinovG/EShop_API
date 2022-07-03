@@ -113,7 +113,7 @@ Content-Type: application/json
 Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
 
 {
-  "state": "True"
+  "state": "False"
 }
 
 ### POST method for upload .yaml-file need to use by the Postman with "Body"-"form-data"

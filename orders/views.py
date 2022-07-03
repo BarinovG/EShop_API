@@ -11,14 +11,15 @@ from rest_framework.exceptions import ParseError
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .permission import IsAuthenticatedAndShop
 from rest_framework.viewsets import ViewSet, ReadOnlyModelViewSet
+
 import yaml
 from yaml.loader import SafeLoader
 
 from .models import Shop, Category, ProductInfo, Order, OrderItem, Contact, ConfirmEmailToken
 from .serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializerPatch, OrderSerializer, ContactSerializer, OrderItemSerializerGet, OrderItemSerializerPost
+from .permission import IsAuthenticatedAndShop
 from .tasks import token_postman, info_postman, import_yaml
 
 
@@ -83,7 +84,7 @@ class UserViewSet(ViewSet):
             if confirm:
                 confirm.user.is_active = True
                 confirm.user.save()
-                return JsonResponse({'Status': 'Аккаунт активирован'})
+                return JsonResponse({'Status': True, 'Description': 'Аккаунт активирован'})
             else:
                 return JsonResponse({'Status': False,
                                      'Errors': 'Неправильно указан токен или email, аккаунт не активирован'})
@@ -125,15 +126,15 @@ class UserViewSet(ViewSet):
         # проверяем обязательные аргументы
         password = request.data.get('password')
         if password:
-            # проверяем пароль на сложность
             try:
                 validate_password(password)
             except Exception as password_error:
                 error_array = []
                 for item in password_error:
                     error_array.append(item)
-                return JsonResponse({'Status': False, 'Errors': {'password': error_array}})
+                return JsonResponse({'Status': False, 'Errors': {'password': str(error_array)}})
             else:
+                request.data._mutable = True
                 request.user.set_password(password)
                 request.data['password'] = 'closed info, remember ur new password please'
 
@@ -142,9 +143,9 @@ class UserViewSet(ViewSet):
         if user_serializer.is_valid():
             user_serializer.save()
             info_postman.send_change_user_info.delay(request.user.id, request.data)
-            return JsonResponse({'Status': f'{request.data} is update'})
+            return JsonResponse({'Status': True, 'Update info': f'{request.data} is update'})
         else:
-            return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
+            return JsonResponse({'Status': False, 'Errors': str(user_serializer.errors)})
 
     """
     Получить список контактов пользователей
@@ -170,7 +171,7 @@ class UserViewSet(ViewSet):
             serializer.save()
             return JsonResponse({'Status': True})
         else:
-            return JsonResponse({'Status': False, 'Errors': serializer.errors})
+            return JsonResponse({'Status': False, 'Errors': str(serializer.errors)})
 
     """
     Удалить контакт
@@ -183,7 +184,7 @@ class UserViewSet(ViewSet):
             contact.delete()
             return JsonResponse({'Status': True, 'Ваш контакт': f'с id{pk} удален'})
         except:
-            return JsonResponse({'Status': 'Something went wrong'})
+            return JsonResponse({'Status': False, 'Description': 'Something went wrong'})
 
     """
     Редактировать контакт 
@@ -194,9 +195,9 @@ class UserViewSet(ViewSet):
         serializer = ContactSerializer(contact, data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response(serializer.data)
+            return JsonResponse({"Status": True, "New data": str(serializer.data)})
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return JsonResponse({"Status": False, "Errors": str(serializer.errors)})
 
 
 class PartnerFunctionsViewSet(ViewSet):
@@ -215,10 +216,10 @@ class PartnerFunctionsViewSet(ViewSet):
         try:
             shop = request.user.shop
             serializer = ShopSerializer(shop)
-            return Response(serializer.data)
+            return JsonResponse({"Status": True, "Shop": serializer.data})
 
         except ObjectDoesNotExist:
-            return Response("That's user dont have a shop")
+            return JsonResponse({"Status": False, "Description": "That's user dont have a shop"})
 
     """
     Изменить статус магазина
@@ -230,9 +231,9 @@ class PartnerFunctionsViewSet(ViewSet):
         if state:
             try:
                 Shop.objects.filter(user_id=request.user.id).update(state=state)
-                return JsonResponse({'Status': 'OK', 'State': state})
+                return JsonResponse({'Status': True, 'State': state})
             except ValidationError as error:
-                return Response(f'Status: False, Errors: {error}')
+                return JsonResponse({"Status": False, "Errors": str(error)})
         else:
             return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
@@ -246,7 +247,7 @@ class PartnerFunctionsViewSet(ViewSet):
             user_id = request.user.id
             data = yaml.load(file, SafeLoader)
             import_yaml.delay(user_id, data)
-            return Response(f"{data['shop']} price update")
+            return JsonResponse({"Status": True, "Price is update": data['shop']})
         except KeyError:
             raise ParseError('Request has no resource file attached')
 
@@ -316,12 +317,11 @@ class ShoppingCartViewSet(ViewSet):
             return OrderItem.objects.filter(order__user=request.user.id, id=pk, order__state='BASKET').annotate(
                 total_sum_position=Sum(F('quantity') * F('product_info__price')))
         except ObjectDoesNotExist:
-            return Response(f'Status: False, Errors: u dont have item with id{pk}')
+            return JsonResponse({"Status": False, "Errors": f"u dont have item with id{pk}"})
 
     """
     Получить корзину пользователя
     """
-
     @action(detail=False, methods=['GET'], name='See shopping cart')
     def basket(self, request, *args, **kwargs):
 
@@ -353,10 +353,10 @@ class ShoppingCartViewSet(ViewSet):
             serializer = OrderItemSerializerPost(data=data)
             if serializer.is_valid(raise_exception=True):
                 serializer.save()
-                return Response(serializer.data)
+                return JsonResponse({"Status": True, "Description": serializer.data})
 
         except IntegrityError as errors:
-            return Response(str(errors))
+            return JsonResponse({"Status": False, "Errors": str(errors)})
 
         return JsonResponse({'Status': False, 'Errors': serializer.errors})
 
@@ -369,9 +369,9 @@ class ShoppingCartViewSet(ViewSet):
         product = self.get_object(request, pk).distinct()
         if product:
             serializer = OrderItemSerializerGet(product, many=True)
-            return Response(serializer.data)
+            return JsonResponse({"Status": True, "Description": serializer.data})
         else:
-            return Response(f'Позиции с id{pk} в корзине нет')
+            return JsonResponse({"Status": False, "Description": f"Позиции с id{pk} в корзине нет"})
 
     """
     Изменение количества конкретного товара в корзине
@@ -384,7 +384,7 @@ class ShoppingCartViewSet(ViewSet):
         try:
             available_qnt = ProductInfo.objects.get(product__name=item.product_info.product.name).quantity
         except AttributeError as er:
-            return Response(str(er))
+            return JsonResponse({"Status": False, "Errors": str(er)})
 
         try:
             if int(request.data.get('quantity')) <= available_qnt:
@@ -392,13 +392,14 @@ class ShoppingCartViewSet(ViewSet):
                     serializer = OrderItemSerializerPatch(item, data=request.data)
                     if serializer.is_valid():
                         serializer.save()
-                        return Response(serializer.data)
+                        return JsonResponse({"Status": True, "Description": serializer.data})
                 except IntegrityError as er:
-                    return Response(str(er))
+                    return JsonResponse({"Status": False, "Errors": str(er)})
             else:
-                return Response(f'Available qnty {available_qnt} less then request {request.data["quantity"]}')
+                return JsonResponse({"Status": False, "Error": f'Available qnty {available_qnt} '
+                                                               f'less then request {request.data["quantity"]}'})
         except ValueError as ve:
-            return Response(str(ve))
+            return JsonResponse({"Status": False, "Errors": str(ve)})
 
     """
     Удалить конкретную позицию в корзине
@@ -440,7 +441,7 @@ class OrderViewSet(ViewSet):
 
         if {'order_id', 'contact_id'}.issubset(request.data) and request.data['order_id'].isdigit():
             try:
-                update_order = Order.objects.filter(user_id=request.user.id, pk=request.data['order_id']).update(
+                Order.objects.filter(user_id=request.user.id, pk=request.data['order_id']).update(
                     contact_id=request.data['contact_id'], state='NEW')
                 info_postman.new_order.delay(request.user.id, request.data)
                 return JsonResponse({'Status': True})
