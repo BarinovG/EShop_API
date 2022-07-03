@@ -3,8 +3,8 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F
-from django.http import JsonResponse
-from rest_framework import status
+from django.http import JsonResponse, HttpResponseRedirect
+from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.decorators import action
 from rest_framework.exceptions import ParseError
@@ -22,6 +22,9 @@ from .serializers import UserSerializer, CategorySerializer, ShopSerializer, Pro
 from .permission import IsAuthenticatedAndShop
 from .tasks import token_postman, info_postman, import_yaml
 
+
+def doc_view(request):
+    return HttpResponseRedirect(reverse('swagger-ui'))
 
 class UserViewSet(ViewSet):
     """
