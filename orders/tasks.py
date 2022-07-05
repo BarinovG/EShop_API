@@ -93,6 +93,7 @@ def import_yaml(user_id, data):
         product_info = ProductInfo.objects.create(product_id=product.id,
                                                   external_id=item['id'],
                                                   model=item['model'],
+                                                  name=item['name'],
                                                   price=item['price'],
                                                   price_rrc=item['price_rrc'],
                                                   quantity=item['quantity'],

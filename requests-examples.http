@@ -1,11 +1,11 @@
 ### Registration
-POST http://127.0.0.1:8000/api/v1/user/registration
+POST http://127.0.0.1:8000/api/v1/user/registration/
 Content-Type: application/json
 
 {
   "first_name": "Foo",
   "last_name": "Bar",
-  "email": "email",
+  "email": "email@email.com",
   "password": "Valid1Password",
   "company": "MU",
   "position": "Fw",
@@ -45,7 +45,7 @@ Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 }
 
 ### Change user password
-POST http://127.0.0.1:8000/api/v1/user/change_user_info
+POST http://127.0.0.1:8000/api/v1/user/change_user_info/
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
@@ -54,7 +54,7 @@ Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 }
 
 ### Get my contacts
-GET http://127.0.0.1:8000/api/v1/user/user_contacts
+GET http://127.0.0.1:8000/api/v1/user/user_contacts/
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
@@ -69,7 +69,7 @@ Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 }
 
 ### Edit my contact
-PUT http://127.0.0.1:8000/api/v1/user/change_user_contact/10/
+PATCH http://127.0.0.1:8000/api/v1/user/10/change_user_contact/
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
@@ -108,7 +108,7 @@ Content-Type: application/json
 Authorization: Token d023365cf17ea08e79f16428f4ee1177e739b0f1
 
 ### Partner change state
-POST http://127.0.0.1:8000/api/v1/partner/change_shop_status/
+PATCH http://127.0.0.1:8000/api/v1/partner/change_shop_status/
 Content-Type: application/json
 Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
 
@@ -122,7 +122,7 @@ Content-Type: application/json
 Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
 
 ### Get list of orders from shop
-GET http://127.0.0.1:8000/api/v1/partner/users_orders
+GET http://127.0.0.1:8000/api/v1/partner/users_orders/
 Content-Type: application/json
 Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
 
@@ -140,14 +140,11 @@ GET http://127.0.0.1:8000/api/v1/products
 Content-Type: application/json
 Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
 
-{
-  "text": "ГИГ"
-}
 
 ### Get your shopping cart
 GET http://127.0.0.1:8000/api/v1/shopping_cart/basket
 Content-Type: application/json
-Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
+Authorization: Token d1bb6c9f3599973bc9df794028a8a9613f7dddd3
 
 ### Add product to your shopping cart
 POST http://127.0.0.1:8000/api/v1/shopping_cart/add_position
@@ -181,7 +178,7 @@ Authorization: Token 127442b31c0023df3875960e889dcc36b6de
 ### Get list of user orders
 GET http://127.0.0.1:8000/api/v1/order/get_orders
 Content-Type: application/json
-Authorization: Token d023365cf17ea08e79f16428f4ee1177e739b0f1///
+Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
 
 ### Change status of order from BASKET to NEW
 POST http://127.0.0.1:8000/api/v1/order/new_order/

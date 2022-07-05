@@ -2,13 +2,14 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.db.models import Q, Sum, F
+from django.db.models import Sum, F
 from django.http import JsonResponse, HttpResponseRedirect
 from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
+from drf_spectacular.utils import extend_schema, OpenApiExample
+from rest_framework.filters import SearchFilter
 from rest_framework.decorators import action
 from rest_framework.exceptions import ParseError
-from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ViewSet, ReadOnlyModelViewSet
@@ -26,6 +27,7 @@ from .tasks import token_postman, info_postman, import_yaml
 def doc_view(request):
     return HttpResponseRedirect(reverse('swagger-ui'))
 
+
 class UserViewSet(ViewSet):
     """
     ViewSet for working with User functions
@@ -38,9 +40,38 @@ class UserViewSet(ViewSet):
         except ObjectDoesNotExist:
             return Response(f'Status: False, Errors: u dont have contact by #{pk}')
 
-    """
-    Регистрация пользователя
-    """
+    @extend_schema(
+        description='Registrate a new user',
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'file': {
+                        'type': 'string',
+                        'format': 'binary'
+                    }
+                }
+            }
+        },
+        responses=UserSerializer,
+        examples=[
+            OpenApiExample(
+                'Example 1',
+                summary='registrate Foo Bar',
+                description='all required fields are filled in, request will be done and'
+                            'to your email send confirm token',
+                value={
+                    "first_name": "Foo",
+                    "last_name": "Bar",
+                    "email": "email@email.com",
+                    "password": "Valid1Password",
+                    "company": "MU",
+                    "position": "Fw",
+                    "type": "CLIENT"
+                }
+            ),
+        ]
+    )
     @action(detail=False, methods=['POST'], name='New registration')
     def registration(self, request, *args, **kwargs):
 
@@ -73,9 +104,32 @@ class UserViewSet(ViewSet):
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
-    """
-    Подтверждение регистрации, активация аккаунта
-    """
+    @extend_schema(
+        description='Сonfirm registration a new user',
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'file': {
+                        'type': 'string',
+                        'format': 'binary'
+                    }
+                }
+            }
+        },
+        examples=[
+            OpenApiExample(
+                'Example 1',
+                summary='Сonfirm registration our user',
+                description='all required fields are filled in, request will be done and your account will be active.'
+                            'In the next u can log in.',
+                value={
+                    "email": "email",
+                    "token": "TokenFromMail"
+                }
+            ),
+        ]
+    )
     @action(detail=False, methods=['POST'], name='Confirm registration')
     def confirm_registration(self, request, *args, **kwargs):
 
@@ -94,9 +148,32 @@ class UserViewSet(ViewSet):
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
-    """
-    Авторизация пользователя
-    """
+    @extend_schema(
+        description='login account',
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'file': {
+                        'type': 'string',
+                        'format': 'binary'
+                    }
+                }
+            }
+        },
+        examples=[
+            OpenApiExample(
+                'Example 1',
+                summary='login account',
+                description='all required fields are filled in, request will be done and you will get AuthToken for'
+                            'work with API',
+                value={
+                    "email": "use_ur_email",
+                    "token": "use_ur_password"
+                }
+            ),
+        ]
+    )
     @action(detail=False, methods=['POST'], name='Login')
     def login_account(self, request, *args, **kwargs):
 
@@ -112,18 +189,45 @@ class UserViewSet(ViewSet):
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
-    """
-    Получить информацию пользователя
-    """
+    @extend_schema(description='Get info about your account. Auth only', responses=UserSerializer)
     @action(detail=False, methods=['GET'], name='User information', permission_classes=[IsAuthenticated])
     def user_info(self, request, *args, **kwargs):
 
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
-    """
-    Редактировать информацию пользователя
-    """
+    @extend_schema(
+        description='Change info about you. Auth only',
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'file': {
+                        'type': 'string',
+                        'format': 'binary'
+                    }
+                }
+            }
+        },
+        examples=[
+            OpenApiExample(
+                'Example 1',
+                summary='change password',
+                description='save it to your password manager',
+                value={
+                    "password": "new_password!"
+                }
+            ),
+            OpenApiExample(
+                'Example 2',
+                summary='change company',
+                description='Maybe you are change job',
+                value={
+                    "company": "Some Company"
+                }
+            ),
+        ]
+    )
     @action(detail=False, methods=['POST'], name='Change user-info', permission_classes=[IsAuthenticated])
     def change_user_info(self, request, *args, **kwargs):
         # проверяем обязательные аргументы
@@ -137,7 +241,6 @@ class UserViewSet(ViewSet):
                     error_array.append(item)
                 return JsonResponse({'Status': False, 'Errors': {'password': str(error_array)}})
             else:
-                request.data._mutable = True
                 request.user.set_password(password)
                 request.data['password'] = 'closed info, remember ur new password please'
 
@@ -150,18 +253,39 @@ class UserViewSet(ViewSet):
         else:
             return JsonResponse({'Status': False, 'Errors': str(user_serializer.errors)})
 
-    """
-    Получить список контактов пользователей
-    """
+    @extend_schema(description='Get your contacts. Auth only', responses=ContactSerializer)
     @action(detail=False, methods=['GET'], name='List of user contacts', permission_classes=[IsAuthenticated])
     def user_contacts(self, request, *args, **kwargs):
         contact = Contact.objects.filter(user_id=request.user.id)
         serializer = ContactSerializer(contact, many=True)
         return Response(serializer.data)
 
-    """
-    Добавить новый контакт
-    """
+    @extend_schema(
+        description='Add new contact. Auth only',
+        responses=ContactSerializer,
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'data': {
+                        'type': 'string',
+                        'format': 'binary'
+                    }
+                }
+            }
+        },
+        examples=[
+            OpenApiExample(
+                'Example 1',
+                summary='You can add any information. Used fields: city, street, house, structure, building,'
+                        'apartment, phone',
+                description='save it to your password manager',
+                value={
+                    "street": "FooBar street"
+                }
+            )
+        ]
+    )
     @action(detail=False, methods=['POST'], name='Add new contact', permission_classes=[IsAuthenticated])
     def add_user_contact(self, request, *args, **kwargs):
         if len(request.data) == 0:
@@ -176,9 +300,7 @@ class UserViewSet(ViewSet):
         else:
             return JsonResponse({'Status': False, 'Errors': str(serializer.errors)})
 
-    """
-    Удалить контакт
-    """
+    @extend_schema(description='Delete your contact by id. Auth only')
     @action(detail=True, methods=['DELETE'], name='Delete contact', permission_classes=[IsAuthenticated])
     def delete_user_contact(self, request, pk):
 
@@ -189,10 +311,32 @@ class UserViewSet(ViewSet):
         except:
             return JsonResponse({'Status': False, 'Description': 'Something went wrong'})
 
-    """
-    Редактировать контакт 
-    """
-    @action(detail=True, methods=['PUT'], name='Change contact', permission_classes=[IsAuthenticated])
+    @extend_schema(
+        description='Change contact. Auth only, by id',
+        responses=ContactSerializer,
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'file': {
+                        'type': 'string',
+                        'format': 'binary'
+                    }
+                }
+            }
+        },
+        examples=[
+            OpenApiExample(
+                'Example 1',
+                summary='Change some info in contact. Use id contact for it',
+                description='change anything',
+                value={
+                    "street": "Xyz street"
+                }
+            )
+        ]
+    )
+    @action(detail=True, methods=['PATCH'], name='Change contact', permission_classes=[IsAuthenticated])
     def change_user_contact(self, request, pk):
         contact = self.get_object(pk)
         serializer = ContactSerializer(contact, data=request.data)
@@ -210,9 +354,10 @@ class PartnerFunctionsViewSet(ViewSet):
 
     permission_classes = [IsAuthenticatedAndShop]
 
-    """
-    Получить информацию о магазине
-    """
+    @extend_schema(
+        description='Get info about shop',
+        responses=ShopSerializer,
+    )
     @action(detail=False, methods=['GET'], name='Get info about shop')
     def shop_info(self, request, *args, **kwargs):
 
@@ -224,10 +369,21 @@ class PartnerFunctionsViewSet(ViewSet):
         except ObjectDoesNotExist:
             return JsonResponse({"Status": False, "Description": "That's user dont have a shop"})
 
-    """
-    Изменить статус магазина
-    """
-    @action(detail=False, methods=['POST'], name='Change shop status')
+    @extend_schema(
+        description='Change shop status',
+        responses=ShopSerializer,
+        examples=[
+            OpenApiExample(
+                'Example 1',
+                summary='Change status to False',
+                description=f"It's mean that shop dont work",
+                value={
+                    "state": False
+                }
+            ),
+        ]
+    )
+    @action(detail=False, methods=['PATCH'], name='Change shop status')
     def change_shop_status(self, request, *args, **kwargs):
 
         state = request.data.get('state')
@@ -240,9 +396,21 @@ class PartnerFunctionsViewSet(ViewSet):
         else:
             return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
-    """
-    Загрузить/добавить позиции для прайса
-    """
+    @extend_schema(
+        description='Upload/update positions in your price-list',
+        operation_id='upload_file',
+        request={
+            'multipart/form-data': {
+                'type': 'object',
+                'properties': {
+                    'file': {
+                        'type': 'string',
+                        'format': 'binary'
+                    }
+                }
+            }
+        },
+    )
     @action(detail=False, methods=['POST'], name='Add price')
     def add_price(self, request, *args, **kwargs):
         try:
@@ -254,9 +422,10 @@ class PartnerFunctionsViewSet(ViewSet):
         except KeyError:
             raise ParseError('Request has no resource file attached')
 
-    """
-    Посмотреть заказы в магазине
-    """
+    @extend_schema(
+        description='See orders in shop',
+        responses=OrderSerializer,
+    )
     @action(detail=False, methods=['GET'], name='See orders by buyers')
     def users_orders(self, request, *args, **kwargs):
 
@@ -288,29 +457,23 @@ class ShopView(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
 
 
-class ProductInfoView(ListAPIView):
+class ProductInfoView(ReadOnlyModelViewSet):
     """
     Класс для поиска товаров с возможностью поиска по имени
     """
-
+    queryset = ProductInfo.objects.all().select_related('shop', 'product__category'). \
+        prefetch_related('product_parameters__parameter').distinct()
+    serializer_class = ProductInfoSerializer
     permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        text = request.data['text']
-        if text:
-            product = ProductInfo.objects.filter(Q(product__name__icontains=text) | Q(
-                product__category__name__icontains=text)).select_related('shop', 'product__category'). \
-                prefetch_related('product_parameters__parameter').distinct()
-            serializer = ProductInfoSerializer(product, many=True)
-            return Response(serializer.data)
-        else:
-            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+    filter_backends = [SearchFilter]
+    search_fields = ["name", "product__name", ]
 
 
 class ShoppingCartViewSet(ViewSet):
     """
     Viewset for working with buyer basket
     """
+
     permission_classes = [IsAuthenticated]
 
     # Method for get obj from SC by id, used in another class methods
@@ -322,9 +485,10 @@ class ShoppingCartViewSet(ViewSet):
         except ObjectDoesNotExist:
             return JsonResponse({"Status": False, "Errors": f"u dont have item with id{pk}"})
 
-    """
-    Получить корзину пользователя
-    """
+    @extend_schema(
+        description='Get your shopping cart',
+        responses=OrderItemSerializerGet
+    )
     @action(detail=False, methods=['GET'], name='See shopping cart')
     def basket(self, request, *args, **kwargs):
 
@@ -333,9 +497,32 @@ class ShoppingCartViewSet(ViewSet):
         serializer = OrderItemSerializerGet(queryset, many=True)
         return Response(serializer.data)
 
-    """
-    Добавить позицию в корзину
-    """
+    @extend_schema(
+        description='Add position to shop-cart',
+        responses=OrderItemSerializerPost,
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'data': {
+                        'type': 'string',
+                        'format': 'binary'
+                    }
+                }
+            }
+        },
+        examples=[
+            OpenApiExample(
+                'Example 1',
+                summary='Add new item in SC',
+                description='For that action you are need to know: ID-product_info and paste desired quantity',
+                value={
+                    "product_info_id": 37,
+                    "quantity": 10
+                }
+            ),
+        ]
+    )
     @action(detail=False, methods=['POST'], name='Add new position to shopping cart')
     def add_position(self, request, *args, **kwargs):
 
@@ -363,9 +550,10 @@ class ShoppingCartViewSet(ViewSet):
 
         return JsonResponse({'Status': False, 'Errors': serializer.errors})
 
-    """
-    Получить информацию по конкретному продукту в корзине
-    """
+    @extend_schema(
+        description='Get info about product by id',
+        responses=OrderItemSerializerGet
+    )
     @action(detail=True, methods=['GET'], name='See info about product')
     def product_info(self, request, pk, *args, **kwargs):
 
@@ -376,10 +564,32 @@ class ShoppingCartViewSet(ViewSet):
         else:
             return JsonResponse({"Status": False, "Description": f"Позиции с id{pk} в корзине нет"})
 
-    """
-    Изменение количества конкретного товара в корзине
-    """
-    @action(detail=True, methods=['PATCH'], name='Change quantity for position')
+    @extend_schema(
+        description='Change quantity for item in SC',
+        responses=OrderItemSerializerPatch,
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'data': {
+                        'type': 'string',
+                        'format': 'binary'
+                    }
+                }
+            }
+        },
+        examples=[
+            OpenApiExample(
+                'Example 1',
+                summary='Change quantity',
+                description='Change for available quantity',
+                value={
+                    "quantity": 2
+                }
+            ),
+        ]
+    )
+    @action(detail=True, methods=['PATCH'], name='Change quantity for item in SC')
     def change_quantity(self, request, pk, *args, **kwargs):
 
         item = self.get_object(request, pk).first()
@@ -404,9 +614,7 @@ class ShoppingCartViewSet(ViewSet):
         except ValueError as ve:
             return JsonResponse({"Status": False, "Errors": str(ve)})
 
-    """
-    Удалить конкретную позицию в корзине
-    """
+    @extend_schema(description='Delete position by id')
     @action(detail=True, methods=['DELETE'], name='Delete position from shopping cart')
     def delete_position(self, request, pk, *args, **kwargs):
 
@@ -421,9 +629,11 @@ class OrderViewSet(ViewSet):
     """
 
     permission_classes = [IsAuthenticated]
-    """
-    Просмотреть заказы
-    """
+
+    @extend_schema(
+        description='Get my orders',
+        responses=OrderSerializer
+    )
     @action(detail=False, methods=['GET'], name='See orders of buyers')
     def get_orders(self, request, *args, **kwargs):
 
@@ -436,10 +646,32 @@ class OrderViewSet(ViewSet):
         except IntegrityError as er:
             return Response(str(er))
 
-    """
-    Создать заказ из корзины
-    """
-    @action(detail=False, methods=['POST'], name='Create new order')
+    @extend_schema(
+        description='Change status from "Shopping cart" to "Order"',
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'data': {
+                        'type': 'string',
+                        'format': 'binary'
+                    }
+                }
+            }
+        },
+        examples=[
+            OpenApiExample(
+                'Example 1',
+                summary='Change status of order from BASKET to NEW',
+                description="Indicate ID's order and contact for success",
+                value={
+                    "order_id": "8",
+                    "contact_id": "10"
+                }
+            ),
+        ]
+    )
+    @action(detail=False, methods=['PATCH'], name='Create new order')
     def new_order(self, request, *args, **kwargs):
 
         if {'order_id', 'contact_id'}.issubset(request.data) and request.data['order_id'].isdigit():
@@ -447,7 +679,7 @@ class OrderViewSet(ViewSet):
                 Order.objects.filter(user_id=request.user.id, pk=request.data['order_id']).update(
                     contact_id=request.data['contact_id'], state='NEW')
                 info_postman.new_order.delay(request.user.id, request.data)
-                return JsonResponse({'Status': True})
+                return JsonResponse({'Status': True, 'Description': f'Order with {request.data} change status to NEW'})
             except IntegrityError as error:
                 return JsonResponse({'Status': False, 'Errors': error})
 

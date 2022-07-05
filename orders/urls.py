@@ -12,10 +12,10 @@ router.register('shopping_cart', ShoppingCartViewSet, basename='shopping_cart')
 router.register('order', OrderViewSet, basename='order')
 router.register('category', CategoryView, basename='category')
 router.register('shops', ShopView, basename='shops')
+router.register('products', ProductInfoView, basename='product_info')
 
 app_name = 'orders'
 urlpatterns = [
     path('user/password_reset', reset_password_request_token, name='password-reset'),
-    path('user/password_reset/confirm', reset_password_confirm, name='password-reset-confirm'),
-    path('products', ProductInfoView.as_view(), name='product_info'),
+    path('user/password_reset/confirm', reset_password_confirm, name='password-reset-confirm')
 ] + router.urls
