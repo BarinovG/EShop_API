@@ -169,7 +169,7 @@ class UserViewSet(ViewSet):
                             'work with API',
                 value={
                     "email": "use_ur_email",
-                    "token": "use_ur_password"
+                    "password": "use_ur_password"
                 }
             ),
         ]
@@ -182,7 +182,7 @@ class UserViewSet(ViewSet):
 
             if user is not None and user.is_active:
                 user = user
-                token_postman.delay(user.id)
+                token_postman.send_auth_token.delay(user.id)
                 return JsonResponse({'Status': True, 'Token': 'send to email'})
 
             return JsonResponse({'Status': False, 'Errors': 'Не удалось авторизовать'})
