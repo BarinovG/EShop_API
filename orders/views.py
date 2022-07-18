@@ -28,17 +28,10 @@ def doc_view(request):
     return HttpResponseRedirect(reverse('swagger-ui'))
 
 
-class UserViewSet(ViewSet):
+class AuthViewSet(ViewSet):
     """
-    ViewSet for working with User functions
+    ViewSet for User authentication
     """
-
-    def get_object(self, pk):
-        try:
-            contact = Contact.objects.get(pk=pk)
-            return contact
-        except ObjectDoesNotExist:
-            return Response(f'Status: False, Errors: u dont have contact by #{pk}')
 
     @extend_schema(
         description='Registrate a new user',
@@ -172,10 +165,9 @@ class UserViewSet(ViewSet):
                     "password": "use_ur_password"
                 }
             ),
-        ]
-    )
+        ])
     @action(detail=False, methods=['POST'], name='Login')
-    def login_account(self, request, *args, **kwargs):
+    def login(self, request, *args, **kwargs):
 
         if {'email', 'password'}.issubset(request.data):
             user = authenticate(request, username=request.data.get('email'), password=request.data.get('password'))
@@ -189,9 +181,14 @@ class UserViewSet(ViewSet):
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
+
+class UserViewSet(ViewSet):
+    """
+    ViewSet for working with User
+    """
+
     @extend_schema(description='Get info about your account. Auth only', responses=UserSerializer)
-    @action(detail=False, methods=['GET'], name='User information', permission_classes=[IsAuthenticated])
-    def user_info(self, request, *args, **kwargs):
+    def list(self, request, *args, **kwargs):
 
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
@@ -228,9 +225,9 @@ class UserViewSet(ViewSet):
             ),
         ]
     )
-    @action(detail=False, methods=['POST'], name='Change user-info', permission_classes=[IsAuthenticated])
-    def change_user_info(self, request, *args, **kwargs):
-        # проверяем обязательные аргументы
+    @action(detail=False, methods=['PATCH'])
+    def change_info(self, request, *args, **kwargs):
+
         password = request.data.get('password')
         if password:
             try:
@@ -253,9 +250,23 @@ class UserViewSet(ViewSet):
         else:
             return JsonResponse({'Status': False, 'Errors': str(user_serializer.errors)})
 
+
+class ContactsViewSet(ViewSet):
+    """
+    ViewSet for working with User contacts
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk):
+        try:
+            contact = Contact.objects.get(pk=pk)
+            return contact
+        except ObjectDoesNotExist:
+            return Response(f'Status: False, Errors: u dont have contact by #{pk}')
+
     @extend_schema(description='Get your contacts. Auth only', responses=ContactSerializer)
-    @action(detail=False, methods=['GET'], name='List of user contacts', permission_classes=[IsAuthenticated])
-    def user_contacts(self, request, *args, **kwargs):
+    def list(self, request, *args, **kwargs):
         contact = Contact.objects.filter(user_id=request.user.id)
         serializer = ContactSerializer(contact, many=True)
         return Response(serializer.data)
@@ -286,8 +297,7 @@ class UserViewSet(ViewSet):
             )
         ]
     )
-    @action(detail=False, methods=['POST'], name='Add new contact', permission_classes=[IsAuthenticated])
-    def add_user_contact(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
         if len(request.data) == 0:
             return Response('Не указаны никакие данные')
 
@@ -301,8 +311,7 @@ class UserViewSet(ViewSet):
             return JsonResponse({'Status': False, 'Errors': str(serializer.errors)})
 
     @extend_schema(description='Delete your contact by id. Auth only')
-    @action(detail=True, methods=['DELETE'], name='Delete contact', permission_classes=[IsAuthenticated])
-    def delete_user_contact(self, request, pk):
+    def delete(self, request, pk):
 
         try:
             contact = self.get_object(pk)
@@ -336,8 +345,7 @@ class UserViewSet(ViewSet):
             )
         ]
     )
-    @action(detail=True, methods=['PATCH'], name='Change contact', permission_classes=[IsAuthenticated])
-    def change_user_contact(self, request, pk):
+    def partial_update(self, request, pk):
         contact = self.get_object(pk)
         serializer = ContactSerializer(contact, data=request.data)
         if serializer.is_valid(raise_exception=True):
@@ -347,54 +355,27 @@ class UserViewSet(ViewSet):
         return JsonResponse({"Status": False, "Errors": str(serializer.errors)})
 
 
-class PartnerFunctionsViewSet(ViewSet):
+class SellerViewSet(ViewSet):
     """
-    Viewset for working with User SHOP status
+    Viewset for working with sellers orders and prices
     """
 
     permission_classes = [IsAuthenticatedAndShop]
 
     @extend_schema(
-        description='Get info about shop',
-        responses=ShopSerializer,
+        description='See orders in shop',
+        responses=OrderSerializer,
     )
-    @action(detail=False, methods=['GET'], name='Get info about shop')
-    def shop_info(self, request, *args, **kwargs):
+    def list(self, request, *args, **kwargs):
 
-        try:
-            shop = request.user.shop
-            serializer = ShopSerializer(shop)
-            return JsonResponse({"Status": True, "Shop": serializer.data})
+        order = Order.objects.filter(
+            orders__product_info__shop__user_id=request.user.id).exclude(state='BASKET').prefetch_related(
+            'orders__product_info__product__category',
+            'orders__product_info__product_parameters__parameter').select_related('contact').annotate(
+            total_sum=Sum(F('orders__quantity') * F('orders__product_info__price'))).distinct()
 
-        except ObjectDoesNotExist:
-            return JsonResponse({"Status": False, "Description": "That's user dont have a shop"})
-
-    @extend_schema(
-        description='Change shop status',
-        responses=ShopSerializer,
-        examples=[
-            OpenApiExample(
-                'Example 1',
-                summary='Change status to False',
-                description=f"It's mean that shop dont work",
-                value={
-                    "state": False
-                }
-            ),
-        ]
-    )
-    @action(detail=False, methods=['PATCH'], name='Change shop status')
-    def change_shop_status(self, request, *args, **kwargs):
-
-        state = request.data.get('state')
-        if state:
-            try:
-                Shop.objects.filter(user_id=request.user.id).update(state=state)
-                return JsonResponse({'Status': True, 'State': state})
-            except ValidationError as error:
-                return JsonResponse({"Status": False, "Errors": str(error)})
-        else:
-            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        serializer = OrderSerializer(order, many=True)
+        return Response(serializer.data)
 
     @extend_schema(
         description='Upload/update positions in your price-list',
@@ -411,8 +392,7 @@ class PartnerFunctionsViewSet(ViewSet):
             }
         },
     )
-    @action(detail=False, methods=['POST'], name='Add price')
-    def add_price(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
         try:
             file = request.data['file']
             user_id = request.user.id
@@ -422,21 +402,64 @@ class PartnerFunctionsViewSet(ViewSet):
         except KeyError:
             raise ParseError('Request has no resource file attached')
 
+
+class SellersShopsViewSet(ViewSet):
+    """
+    Viewset for working with sellers shops
+    """
+
+    permission_classes = [IsAuthenticatedAndShop]
+
     @extend_schema(
-        description='See orders in shop',
-        responses=OrderSerializer,
+        description='Get info about shop',
+        responses=ShopSerializer,
     )
-    @action(detail=False, methods=['GET'], name='See orders by buyers')
-    def users_orders(self, request, *args, **kwargs):
+    def list(self, request, *args, **kwargs):
 
-        order = Order.objects.filter(
-            orders__product_info__shop__user_id=request.user.id).exclude(state='BASKET').prefetch_related(
-            'orders__product_info__product__category',
-            'orders__product_info__product_parameters__parameter').select_related('contact').annotate(
-            total_sum=Sum(F('orders__quantity') * F('orders__product_info__price'))).distinct()
+        try:
+            shop = request.user.shop
+            serializer = ShopSerializer(shop)
+            return JsonResponse({"Status": True, "Shop": serializer.data})
 
-        serializer = OrderSerializer(order, many=True)
-        return Response(serializer.data)
+        except ObjectDoesNotExist:
+            return JsonResponse({"Status": False, "Description": "That's user dont have a shop"})
+
+    @extend_schema(
+        description='Change shop status',
+        responses=ShopSerializer,
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'file': {
+                        'type': 'string',
+                        'format': 'binary'
+                    }
+                }
+            }
+        },
+        examples=[
+            OpenApiExample(
+                'Example 1',
+                summary='Change status to False',
+                description=f"It's mean that shop dont work",
+                value={
+                    "state": False
+                }
+            ),
+        ]
+    )
+    def partial_update(self, request, pk=None, *args, **kwargs):
+
+        state = request.data.get('state')
+        if state:
+            try:
+                Shop.objects.filter(user_id=request.user.id).update(state=state)
+                return JsonResponse({'Status': True, 'State': state})
+            except ValidationError as error:
+                return JsonResponse({"Status": False, "Errors": str(error)})
+        else:
+            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
 class CategoryView(ReadOnlyModelViewSet):
@@ -452,7 +475,7 @@ class ShopView(ReadOnlyModelViewSet):
     """
     Класс для просмотра списка магазинов
     """
-    queryset = Shop.objects.all()
+    queryset = Shop.objects.filter(state=True)
     serializer_class = ShopSerializer
     permission_classes = [IsAuthenticated]
 
@@ -489,8 +512,7 @@ class ShoppingCartViewSet(ViewSet):
         description='Get your shopping cart',
         responses=OrderItemSerializerGet
     )
-    @action(detail=False, methods=['GET'], name='See shopping cart')
-    def basket(self, request, *args, **kwargs):
+    def list(self, request, *args, **kwargs):
 
         queryset = OrderItem.objects.filter(order__user=request.user.id, order__state='BASKET').annotate(
             total_sum_position=Sum(F('quantity') * F('product_info__price')))
@@ -523,8 +545,7 @@ class ShoppingCartViewSet(ViewSet):
             ),
         ]
     )
-    @action(detail=False, methods=['POST'], name='Add new position to shopping cart')
-    def add_position(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
 
         if len(request.data) <= 0:
             return JsonResponse({"Status": False, "Error": "Не указаны никакие данные"})
@@ -554,8 +575,7 @@ class ShoppingCartViewSet(ViewSet):
         description='Get info about product by id',
         responses=OrderItemSerializerGet
     )
-    @action(detail=True, methods=['GET'], name='See info about product')
-    def product_info(self, request, pk, *args, **kwargs):
+    def retrieve(self, request, pk, *args, **kwargs):
 
         product = self.get_object(request, pk).distinct()
         if product:
@@ -589,8 +609,7 @@ class ShoppingCartViewSet(ViewSet):
             ),
         ]
     )
-    @action(detail=True, methods=['PATCH'], name='Change quantity for item in SC')
-    def change_quantity(self, request, pk, *args, **kwargs):
+    def partial_update(self, request, pk, *args, **kwargs):
 
         item = self.get_object(request, pk).first()
 
@@ -615,8 +634,7 @@ class ShoppingCartViewSet(ViewSet):
             return JsonResponse({"Status": False, "Errors": str(ve)})
 
     @extend_schema(description='Delete position by id')
-    @action(detail=True, methods=['DELETE'], name='Delete position from shopping cart')
-    def delete_position(self, request, pk, *args, **kwargs):
+    def destroy(self, request, pk, *args, **kwargs):
 
         info = self.get_object(request, pk)
         info.delete()
@@ -634,8 +652,7 @@ class OrderViewSet(ViewSet):
         description='Get my orders',
         responses=OrderSerializer
     )
-    @action(detail=False, methods=['GET'], name='See orders of buyers')
-    def get_orders(self, request, *args, **kwargs):
+    def list(self, request, *args, **kwargs):
 
         order = Order.objects.filter(user_id=request.user.id).exclude(state='BASKET').annotate(
             total_sum=Sum(F('orders__quantity') * F('orders__product_info__price')))
@@ -665,18 +682,16 @@ class OrderViewSet(ViewSet):
                 summary='Change status of order from BASKET to NEW',
                 description="Indicate ID's order and contact for success",
                 value={
-                    "order_id": "8",
                     "contact_id": "10"
                 }
             ),
         ]
     )
-    @action(detail=False, methods=['PATCH'], name='Create new order')
-    def new_order(self, request, *args, **kwargs):
+    def partial_update(self, request, pk, *args, **kwargs):
 
-        if {'order_id', 'contact_id'}.issubset(request.data) and request.data['order_id'].isdigit():
+        if {'contact_id'}.issubset(request.data):
             try:
-                Order.objects.filter(user_id=request.user.id, pk=request.data['order_id']).update(
+                Order.objects.filter(user_id=request.user.id, pk=pk).update(
                     contact_id=request.data['contact_id'], state='NEW')
                 info_postman.new_order.delay(request.user.id, request.data)
                 return JsonResponse({'Status': True, 'Description': f'Order with {request.data} change status to NEW'})
