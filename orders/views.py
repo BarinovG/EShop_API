@@ -311,7 +311,7 @@ class ContactsViewSet(ViewSet):
             return JsonResponse({'Status': False, 'Errors': str(serializer.errors)})
 
     @extend_schema(description='Delete your contact by id. Auth only')
-    def delete(self, request, pk):
+    def destroy(self, request, pk):
 
         try:
             contact = self.get_object(pk)
