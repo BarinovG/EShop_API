@@ -109,3 +109,11 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ('id', 'user', 'total_sum')
         read_only_fields = ('id',)
+
+
+class OrderSerializerAll(serializers.ModelSerializer):
+
+    class Meta:
+        model = Order
+        fields = ('id', 'user', 'state')
+        read_only_fields = ('id',)

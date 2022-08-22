@@ -17,6 +17,11 @@ class TypeContacts(models.TextChoices):
     BUYER = 'CLIENT', 'Покупатель'
 
 
+class TypeShops(models.TextChoices):
+    OPEN = 'Open', 'Работает'
+    CLOSED = 'Closed', 'Не работает'
+
+
 class StatusOrders(models.TextChoices):
     BASKET = 'BASKET', 'Корзина'
     NEW = 'NEW', 'Новый заказ'
@@ -106,7 +111,11 @@ class Shop(models.Model):
         blank=True,
         on_delete=models.CASCADE,
     )
-    state = models.BooleanField('Возможность заказа из магазина', default=True)
+    state = models.TextField(
+        'Возможность заказа из магазина',
+        choices=TypeShops.choices,
+        default=TypeShops.OPEN
+    )
 
     filename = models.FileField(name=None, upload_to='uploads/', blank=True)
 

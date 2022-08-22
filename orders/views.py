@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -19,7 +20,8 @@ from yaml.loader import SafeLoader
 
 from .models import Shop, Category, ProductInfo, Order, OrderItem, Contact, ConfirmEmailToken
 from .serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
-    OrderItemSerializerPatch, OrderSerializer, ContactSerializer, OrderItemSerializerGet, OrderItemSerializerPost
+    OrderItemSerializerPatch, OrderSerializer, OrderSerializerAll, ContactSerializer, OrderItemSerializerGet, \
+    OrderItemSerializerPost
 from .permission import IsAuthenticatedAndShop
 from .tasks import token_postman, info_postman, import_yaml
 
@@ -165,7 +167,8 @@ class AuthViewSet(ViewSet):
                     "password": "use_ur_password"
                 }
             ),
-        ])
+        ]
+    )
     @action(detail=False, methods=['POST'], name='Login')
     def login(self, request, *args, **kwargs):
 
@@ -186,6 +189,8 @@ class UserViewSet(ViewSet):
     """
     ViewSet for working with User
     """
+
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(description='Get info about your account. Auth only', responses=UserSerializer)
     def list(self, request, *args, **kwargs):
@@ -228,27 +233,22 @@ class UserViewSet(ViewSet):
     @action(detail=False, methods=['PATCH'])
     def change_info(self, request, *args, **kwargs):
 
-        password = request.data.get('password')
+        password = request.data.get('password', False)
         if password:
             try:
                 validate_password(password)
-            except Exception as password_error:
-                error_array = []
-                for item in password_error:
-                    error_array.append(item)
-                return JsonResponse({'Status': False, 'Errors': {'password': str(error_array)}})
-            else:
                 request.user.set_password(password)
                 request.data['password'] = 'closed info, remember ur new password please'
+            except ValidationError as er:
+                return Response(str(er), status=400)
 
         # проверяем остальные данные
         user_serializer = UserSerializer(request.user, data=request.data, partial=True)
-        if user_serializer.is_valid():
+        if user_serializer.is_valid(raise_exception=True):
             user_serializer.save()
             info_postman.send_change_user_info.delay(request.user.id, request.data)
             return JsonResponse({'Status': True, 'Update info': f'{request.data} is update'})
-        else:
-            return JsonResponse({'Status': False, 'Errors': str(user_serializer.errors)})
+
 
 
 class ContactsViewSet(ViewSet):
@@ -259,11 +259,8 @@ class ContactsViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_object(self, pk):
-        try:
-            contact = Contact.objects.get(pk=pk)
-            return contact
-        except ObjectDoesNotExist:
-            return Response(f'Status: False, Errors: u dont have contact by #{pk}')
+        contact = get_object_or_404(Contact, pk=pk)
+        return contact
 
     @extend_schema(description='Get your contacts. Auth only', responses=ContactSerializer)
     def list(self, request, *args, **kwargs):
@@ -303,7 +300,6 @@ class ContactsViewSet(ViewSet):
 
         request.data.update({'user': request.user.id})
         serializer = ContactSerializer(data=request.data)
-
         if serializer.is_valid():
             serializer.save()
             return JsonResponse({'Status': True})
@@ -311,14 +307,10 @@ class ContactsViewSet(ViewSet):
             return JsonResponse({'Status': False, 'Errors': str(serializer.errors)})
 
     @extend_schema(description='Delete your contact by id. Auth only')
-    def delete(self, request, pk):
-
-        try:
-            contact = self.get_object(pk)
-            contact.delete()
-            return JsonResponse({'Status': True, 'Ваш контакт': f'с id{pk} удален'})
-        except:
-            return JsonResponse({'Status': False, 'Description': 'Something went wrong'})
+    def destroy(self, request, pk):
+        contact = self.get_object(pk)
+        contact.delete()
+        return JsonResponse({'Status': True, 'Ваш контакт': f'с id{pk} удален'})
 
     @extend_schema(
         description='Change contact. Auth only, by id',
@@ -444,22 +436,27 @@ class SellersShopsViewSet(ViewSet):
                 summary='Change status to False',
                 description=f"It's mean that shop dont work",
                 value={
-                    "state": False
+                    "state": "False"
                 }
             ),
         ]
     )
-    def partial_update(self, request, pk=None, *args, **kwargs):
+    def partial_update(self, request, pk, *args, **kwargs):
 
-        state = request.data.get('state')
-        if state:
-            try:
-                Shop.objects.filter(user_id=request.user.id).update(state=state)
-                return JsonResponse({'Status': True, 'State': state})
-            except ValidationError as error:
-                return JsonResponse({"Status": False, "Errors": str(error)})
+        shop = get_object_or_404(Shop, pk=pk)
+        new_state = request.data.get('state')
+
+        if new_state in ['Open', 'Closed']:
+
+            if shop.state != new_state:
+                shop.state = new_state
+                shop.save()
+                return JsonResponse({'Status': 'Changed', 'State': new_state}, status=200)
+            else:
+                return Response(f'Shop is already {new_state}', status=400)
+
         else:
-            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+            return Response('ValidationError. Need to be Open/Closed', status=400)
 
 
 class CategoryView(ReadOnlyModelViewSet):
@@ -502,11 +499,10 @@ class ShoppingCartViewSet(ViewSet):
     # Method for get obj from SC by id, used in another class methods
     def get_object(self, request, pk):
 
-        try:
-            return OrderItem.objects.filter(order__user=request.user.id, id=pk, order__state='BASKET').annotate(
-                total_sum_position=Sum(F('quantity') * F('product_info__price')))
-        except ObjectDoesNotExist:
-            return JsonResponse({"Status": False, "Errors": f"u dont have item with id{pk}"})
+        items = OrderItem.objects.filter(order__user=request.user.id, order__state='BASKET').annotate(
+            total_sum_position=Sum(F('quantity') * F('product_info__price')))
+        items = get_object_or_404(items, pk=pk)
+        return items
 
     @extend_schema(
         description='Get your shopping cart',
@@ -539,6 +535,7 @@ class ShoppingCartViewSet(ViewSet):
                 summary='Add new item in SC',
                 description='For that action you are need to know: ID-product_info and paste desired quantity',
                 value={
+                    "order_id": 2,
                     "product_info_id": 37,
                     "quantity": 10
                 }
@@ -547,10 +544,7 @@ class ShoppingCartViewSet(ViewSet):
     )
     def create(self, request, *args, **kwargs):
 
-        if len(request.data) <= 0:
-            return JsonResponse({"Status": False, "Error": "Не указаны никакие данные"})
-
-        order_id = Order.objects.get(user=request.user.id, state='BASKET').id
+        order_id = request.data.get('order_id')
         product_info_id = request.data.get('product_info_id')
         quantity = request.data.get('quantity')
 
@@ -568,8 +562,6 @@ class ShoppingCartViewSet(ViewSet):
 
         except IntegrityError as errors:
             return JsonResponse({"Status": False, "Errors": str(errors)})
-
-        return JsonResponse({'Status': False, 'Errors': serializer.errors})
 
     @extend_schema(
         description='Get info about product by id',
@@ -636,9 +628,30 @@ class ShoppingCartViewSet(ViewSet):
     @extend_schema(description='Delete position by id')
     def destroy(self, request, pk, *args, **kwargs):
 
-        info = self.get_object(request, pk)
-        info.delete()
-        return JsonResponse({'Status': True, 'Позиция': f'с id{pk} удалена'})
+        try:
+            info = self.get_object(request, pk)
+            info.delete()
+            return JsonResponse({'Status': True, 'Позиция': f'с id{pk} удалена'})
+        except ValueError as er:
+            return JsonResponse({"Status": False, "Errors": str(er)})
+
+    @extend_schema(description='Create a new order with status BASKET')
+    @action(detail=False, methods=['POST'], name='Create new shop-cart', permission_classes=[IsAuthenticated])
+    def new(self, request, *args, **kwargs):
+
+        try:
+            new_order = Order.objects.create(user_id=request.user.id)
+            return JsonResponse({"Status": True, "Description": f'New Order create with id{new_order.id}'})
+        except:
+            return JsonResponse({"Status": False, "Description": "Something went wrong, try again"})
+
+    @extend_schema(description='Show all carts')
+    @action(detail=False, methods=['GET'], name='Show all carts')
+    def all(self, request, *args, **kwargs):
+
+        order = Order.objects.filter(user_id=request.user.id)
+        serializer = OrderSerializerAll(order, many=True)
+        return Response(serializer.data)
 
 
 class OrderViewSet(ViewSet):
@@ -649,7 +662,7 @@ class OrderViewSet(ViewSet):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        description='Get my orders',
+        description='Get my orders (with any status except Basket)',
         responses=OrderSerializer
     )
     def list(self, request, *args, **kwargs):
@@ -689,13 +702,16 @@ class OrderViewSet(ViewSet):
     )
     def partial_update(self, request, pk, *args, **kwargs):
 
-        if {'contact_id'}.issubset(request.data):
-            try:
-                Order.objects.filter(user_id=request.user.id, pk=pk).update(
-                    contact_id=request.data['contact_id'], state='NEW')
-                info_postman.new_order.delay(request.user.id, request.data)
-                return JsonResponse({'Status': True, 'Description': f'Order with {request.data} change status to NEW'})
-            except IntegrityError as error:
-                return JsonResponse({'Status': False, 'Errors': error})
-
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        try:
+            contact = get_object_or_404(Contact, pk=request.data['contact_id'])
+        except ValueError as ve:
+            return Response(str(ve))
+        order = get_object_or_404(Order, pk=pk)
+        if order.state == 'BASKET':
+            update_order = Order.objects.filter(user_id=request.user.id, pk=pk). \
+                update(contact_id=request.data['contact_id'], state='NEW')
+            info_postman.new_order.delay(request.user.id, request.data)
+            return JsonResponse({'Status': True, 'Description': f'Order with id{pk} change status to NEW'})
+        else:
+            return JsonResponse(
+                {'Status': False, 'Description': 'Can not to change status, because order is not basket'})

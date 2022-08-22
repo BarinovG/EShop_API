@@ -55,6 +55,7 @@ class SendInfo:
                          f'{text} {data}',
                          f'{settings.EMAIL_HOST_USER}',
                          [user.email])
+
     @staticmethod
     @shared_task
     def send_change_user_info(user_id, data):
@@ -78,9 +79,9 @@ class SendInfo:
 
 info_postman = SendInfo()
 
+
 @shared_task
 def import_yaml(user_id, data):
-
     shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=user_id)
     for category in data['categories']:
         category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name'])
@@ -103,5 +104,3 @@ def import_yaml(user_id, data):
             ProductParameter.objects.create(product_info_id=product_info.id,
                                             parameter_id=parameter_object.id,
                                             value=value)
-
-

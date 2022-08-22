@@ -146,12 +146,18 @@ GET http://127.0.0.1:8000/api/v1/shopping_cart/basket
 Content-Type: application/json
 Authorization: Token d1bb6c9f3599973bc9df794028a8a9613f7dddd3
 
-### Add product to your shopping cart
-POST http://127.0.0.1:8000/api/v1/shopping_cart/add_position
+### Get your shopping cart
+GET http://127.0.0.1:8000/api/v1/carts/all
 Content-Type: application/json
-Authorization: Token 127442b31c0023df3875960e889dcc36b6de99e5
+Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
+
+### Add product to your shopping cart
+POST http://127.0.0.1:8000/api/v1/carts/
+Content-Type: application/json
+Authorization: Token f762137d3ee85ceb7470bcb1ad53648331c9453b
 
 {
+  "order_id": 2,
   "product_info_id": 37,
   "quantity": 10
 }

@@ -2,7 +2,7 @@ import json
 import random
 import pytest
 from django.urls import reverse
-from rest_framework.status import HTTP_200_OK
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 
 def test_how_u_do():
@@ -45,13 +45,12 @@ def test_category_view(client, get_or_create_token, category_factory):
     ["category_name", "product_name", "text", "length"],
     (
         (['Phones', 'Vegetables', 'Toys'], ['Iphone', 'Cucumber', 'Lego'], 'CUM', 1),
-        (['Phones', 'Vegetables', 'Toyses'], ['Iphone', 'Cucumber', 'Lego'], 'Es', 3)
+        (['Phones', 'Vegetables', 'Toyses'], ['Iphone', 'Cucumberne', 'Legone'], 'ne', 3)
     )
 )
 @pytest.mark.django_db
 def test_product_info_view(category_name, product_name, text, length, client, get_or_create_token, shops_factory,
                            category_factory, products_factory, product_info_factory):
-    data = {"text": text}
     # make categories with names from our list
     category = category_factory(_quantity=3, name=iter(category_name))
     # make shops
@@ -60,14 +59,13 @@ def test_product_info_view(category_name, product_name, text, length, client, ge
     products = products_factory(_quantity=3, name=iter(product_name), category=iter(category))
     # make products_info list and set a shop and product for each
     products_info = product_info_factory(_quantity=3, shop=iter(shops), product=iter(products))
-    url = reverse('orders:product_info')
+    url = f'http://127.0.0.1:8000/api/v1/products/?search={text}'
     token = get_or_create_token
     client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
-    response = client.generic(method="GET", path=url, data=json.dumps(data),
-                              content_type='application/json')
+    response = client.generic(method="GET", path=url)
 
     assert response.status_code == HTTP_200_OK
-    assert len(response.data) == length
+    assert len(response.data['results']) == length
 
 
 @pytest.mark.django_db
@@ -75,7 +73,7 @@ def test_user_info_view(client, get_or_create_token, test_email):
     """
     In this test check available info about user(API Client)
     """
-    url = reverse('orders:user-user-info')
+    url = reverse('orders:user-list')
     token = get_or_create_token
     client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
     response = client.get(url)
@@ -85,16 +83,16 @@ def test_user_info_view(client, get_or_create_token, test_email):
 
 
 @pytest.mark.parametrize(
-    "email , password, excepted_response_status",
+    "email , password, excepted_status_code",
     [
-        ('admin@admin.ru', '', True),
-        ('admin@', '', False),
-        ('', 's', False),
-        ('admin@admin.ru', 'Somebode-password-Good', True)
+        ('admin@admin.ru', '', HTTP_200_OK),
+        ('admin@', '', HTTP_400_BAD_REQUEST),
+        ('', 's', HTTP_400_BAD_REQUEST),
+        ('admin@ad2min.ru', 'Somebode-password-Good', HTTP_200_OK)
     ]
 )
 @pytest.mark.django_db
-def test_change_user_info(celery_app, email, password, excepted_response_status, client, get_or_create_token):
+def test_change_user_info(celery_app, email, password, excepted_status_code, client, get_or_create_token):
     """
     In this test check how workin email and password validators in view
     """
@@ -102,28 +100,26 @@ def test_change_user_info(celery_app, email, password, excepted_response_status,
         "email": email,
         "password": password
     }
-    url = reverse('orders:user-change-user-info')
+    url = reverse('orders:user-change-info')
     token = get_or_create_token
     client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
-    response = client.post(url, data=data)
+    response = client.patch(url, data=data)
 
-    assert response.status_code == HTTP_200_OK
-    assert response.json()['Status'] == excepted_response_status
-
+    assert response.status_code == excepted_status_code
 
 @pytest.mark.django_db
 def test_shop_info_true(client, get_or_create_token_shop, shops_factory):
     """
     In this test we get a user.id for shop, excepted status True
     """
-    url = reverse('orders:partner-shop-info')
+    url = reverse('orders:partner-list')
     token = get_or_create_token_shop
     client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
     shop = shops_factory(_quantity=1, user=token.user)
     response = client.get(url)
 
     assert response.status_code == HTTP_200_OK
-    assert response.json()['Status'] == True
+    assert response.json()['Shop']['name'] == shop[0].name
 
 
 @pytest.mark.django_db
@@ -131,41 +127,41 @@ def test_shop_info_false(client, get_or_create_token_shop, shops_factory):
     """
     In this test we didn't get a user.id for shop, excepted status False
     """
-    shop = shops_factory(_quantity=1)
-    url = reverse('orders:partner-shop-info')
+
+    url = reverse('orders:partner-list')
     token = get_or_create_token_shop
     client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
+    shop = shops_factory(_quantity=1)
     response = client.get(url)
 
     assert response.status_code == HTTP_200_OK
-    assert response.json()['Status'] == False
+    assert response.json()['Description'] == "That's user dont have a shop"
 
 
 @pytest.mark.parametrize(
-    "state, excepted_status",
+    "ids, state, excepted_status_code",
     [
-        (True, True),
-        (False, True),
-        ('asd', False)
+        (1, "Open", 400),
+        (2, "Closed", 200),
+        (3, "asd", 400)
     ]
 
 )
 @pytest.mark.django_db
-def test_change_shop_status(state, excepted_status, client, get_or_create_token_shop, shops_factory):
+def test_change_shop_status(ids, state, excepted_status_code, client, get_or_create_token_shop, shops_factory):
     """
     In this test we change status of shop and check results
     """
     data = {
         "state": state
     }
-    url = reverse('orders:partner-change-shop-status')
+    url = reverse('orders:partner-detail', args=[ids])
     token = get_or_create_token_shop
     client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
     shop = shops_factory(_quantity=1, user=token.user)
-    response = client.post(url, data=data)
+    response = client.patch(url, data=data)
 
-    assert response.status_code == HTTP_200_OK
-    assert response.json()['Status'] == excepted_status
+    assert response.status_code == excepted_status_code
 
 
 @pytest.mark.parametrize(
@@ -196,7 +192,7 @@ def test_basket(category_name, product_name, quantity, price, price_rrc, client,
     order_items = order_items_factory(_quantity=3, order=iter(order), product_info=iter(products_info),
                                       quantity=quantity)
     client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
-    url = reverse("orders:shopping_cart-basket")
+    url = reverse("orders:shopping_cart-list")
     response = client.get(url)
 
     assert response.status_code == HTTP_200_OK
@@ -209,7 +205,7 @@ def test_basket(category_name, product_name, quantity, price, price_rrc, client,
         (['Phones', 'Vegetables', 'Toys'], ['Iphone', 'Cucumber', 'Lego'], 4,
          random.randrange(200, 500), random.randrange(500, 600), 2, 1),
         (['Phones', 'Vegetables', 'Toyses'], ['Iphone', 'Cucumber', 'Lego'], 7,
-         random.randrange(50, 100), random.randrange(200, 250), 5, 1)
+         random.randrange(50, 100), random.randrange(200, 250), 5, 2)
     )
 )
 @pytest.mark.django_db
@@ -219,6 +215,7 @@ def test_add_position(category_name, product_name, quantity, price, price_rrc, p
     token = get_or_create_token
     # create order
     order = order_factory(_quantity=1, user=token.user, state='BASKET')
+    # create category
     category = category_factory(_quantity=3, name=iter(category_name))
     # make shops
     shops = shops_factory(_quantity=4)
@@ -227,15 +224,14 @@ def test_add_position(category_name, product_name, quantity, price, price_rrc, p
     # make products_info list and set a shop and product for each
     products_info = product_info_factory(_quantity=3, shop=iter(shops), product=iter(products), price=price,
                                          price_rrc=price_rrc)
-    print(products_info)
 
     data = {
-        "order": order_id,
+        "order_id": order_id,
         "product_info_id": product_info_id,
         "quantity": quantity
     }
     client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
-    url = reverse("orders:shopping_cart-add-position")
+    url = reverse("orders:shopping_cart-list")
     response = client.post(url, data=data)
 
     print(response.json())
