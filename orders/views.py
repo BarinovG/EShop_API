@@ -472,7 +472,7 @@ class ShopView(ReadOnlyModelViewSet):
     """
     Класс для просмотра списка магазинов
     """
-    queryset = Shop.objects.filter(state=True)
+    queryset = Shop.objects.filter(state='Open').order_by('name')
     serializer_class = ShopSerializer
     permission_classes = [IsAuthenticated]
 
